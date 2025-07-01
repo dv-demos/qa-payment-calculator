@@ -1,0 +1,99 @@
+name: Post Release Automated Tests & Validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_purl:
+        description: 'The package URL of the image to test and verify.'
+        required: true
+        type: string
+      image_name:
+        description: 'The name of the image to test and verify.'
+        required: true
+        type: string
+      image_tag:
+        description: 'The version/tag of the image to test and verify.'
+        required: true
+        type: string
+      image_sha256:
+        description: 'The digest of the image to test and verify.'
+        required: true
+        type: string
+      image_repo_url:
+        description: 'The repository of the image to test and verify.'
+        required: true
+        type: string
+
+jobs:
+  tests:
+    name: Test Image
+    runs-on: ubuntu-latest
+    if: ${{ inputs.image_purl }}
+    outputs:
+      job_status: ${{ job.status }}
+    steps:
+      - run: echo Testing the image ${{ inputs.image_purl }}
+
+  verify:
+    needs: tests
+    name: Verify Image
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    if: ${{ inputs.image_purl }}
+    outputs:
+      verifier_status: ${{ steps.policy.outcome }}
+    permissions:
+      contents: read  # This is required for actions/checkout
+      id-token: write # This is required for the OIDC token
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify Image
+        id: policy
+        uses: gradle/develocity-provenance-governor-actions/enforce@main
+        with:
+          policy-evaluator-url: 'https://cavendish.sdlc-demo.gradle.com'
+          tenant: default
+          subject-type: oci
+          subject-name: ${{ inputs.image_name }}
+          subject-version: ${{ inputs.image_tag }}
+          subject-digest: ${{ inputs.image_sha256 }}
+          subject-repository-url: ${{ inputs.image_repo_url }}
+          policy-scan: java-build
+
+  promote:
+    needs: [verify, tests]
+    name: Promote Image
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # This is required for the OIDC token
+    if: "always() && (needs.tests.result == 'success')" # Continue if verify failed
+    steps:
+      - name: Setup JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v4
+        id: jfrog
+        env:
+          JF_URL: https://develocitytia.jfrog.io
+        with:
+          oidc-provider-name: github
+
+      - name: Placeholder for promotion
+        run: echo 'The image is ${{ inputs.image_purl }}'
+
+      - name: Report Status
+        run: |          
+          if [[ "${{ needs.verify.outputs.verifier_status }}" == "success" ]]; then
+          cat << EOF > ${GITHUB_STEP_SUMMARY}
+          ## Image Promoted 🚀
+          
+          EOF
+          else
+          cat << EOF > ${GITHUB_STEP_SUMMARY}
+          ## Image Promoted (with warning) 🚀
+          
+          EOF
+          fi
+          
+          echo 'Image promoted to production:' >> $GITHUB_STEP_SUMMARY
+          echo '`${{ inputs.image_purl }}`' >> $GITHUB_STEP_SUMMARY
