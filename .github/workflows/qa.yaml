@@ -54,7 +54,6 @@ jobs:
         uses: gradle/develocity-provenance-governor-actions/enforce@main
         with:
           policy-evaluator-url: 'https://cavendish.sdlc-demo.gradle.com'
-          tenant: default
           subject-type: oci
           subject-name: ${{ inputs.image_name }}
           subject-version: ${{ inputs.image_tag }}
