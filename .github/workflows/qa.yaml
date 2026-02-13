@@ -51,7 +51,7 @@ jobs:
 
       - name: Verify Image
         id: policy
-        uses: gradle/develocity-provenance-governor-actions/enforce@main
+        uses: gradle/develocity-provenance-governor-actions/enforce@release/artifactoryLinks
         with:
           policy-evaluator-url: 'https://develocity-provenance-governor.sdlc-demo.gradle.com'
           subject-type: oci
