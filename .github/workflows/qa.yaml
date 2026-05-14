@@ -59,7 +59,7 @@ jobs:
           subject-version: ${{ inputs.image_tag }}
           subject-digest: ${{ inputs.image_sha256 }}
           subject-repository-url: ${{ inputs.image_repo_url }}
-          policy-scan: java-build
+          policy-scan: qa
 
   promote:
     needs: [verify, tests]
